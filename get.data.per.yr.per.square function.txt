@@ -1,0 +1,377 @@
+###############################################################
+######    GETTING BBS DATA INTO THE RIGHT FORMAT FOR     ######
+#############        DISTANCE ANALYSIS IN R      ##############
+###############################################################
+
+#  Written by Ali Johnston July 2009
+
+get.data.per.yr.square<-function(species,yr,zero.obs=F,by.dist=T){
+
+# setwd("Z:/bbs")
+# Don't forget to set the working directory.
+# "species" is the two letter species code, e.g. "SF" or "D."
+# "yr" is the four-digit year, e.g. "1994" or "2005"
+# "zero.obs" is whether you want the squares in the dataset which have no observations
+# of the birds in them.  This can extend the time, so the default is F.  If this is
+# changed to T, then they WILL be added.
+
+species.code<-species
+
+# dat1<-readLines("C:/Documents and Settings/alisonj/BBS General/Copy of Distance_in_R/ebird06.txt")
+# dat1<-readLines("D:/BBS distance analysis/ebird06.txt")
+
+file.name<-paste("ebird",substr(yr,3,4),sep="")
+folder.name<-paste("data",substr(yr,3,4),sep="")
+file.loc<-paste(folder.name,"/",file.name,sep="")
+
+ dat1<-readLines(file.loc)
+
+# Subsetting by only those observations of species you want
+
+spec<-sapply(1:length(dat1),function(i){substr(dat1[i],44,45)})
+dat2<-dat1[spec==species.code]
+
+
+# Subsetting by only those observations which are seen within 100m:
+
+dist<-sapply(1:length(dat2),function(i){substr(dat2[i],46,46)})
+dat3<-dat2[dist=="1" | dist=="2"]
+
+
+# Creating new variables:
+
+species<-sapply(1:length(dat3),function(i){substr(dat3[i],44,45)})
+distance<-sapply(1:length(dat3),function(i){as.numeric(as.character(substr(dat3[i],46,46)))})
+site<-sapply(1:length(dat3),function(i){substr(dat3[i],5,10)})
+observer<-sapply(1:length(dat3),function(i){substr(dat3[i],1,4)})
+
+
+# The counts for each transect section:
+
+t1<-sapply(1:length(dat3),function(i){as.numeric(substr(dat3[i],47,49))})
+t2<-sapply(1:length(dat3),function(i){as.numeric(substr(dat3[i],50,52))})
+t3<-sapply(1:length(dat3),function(i){as.numeric(substr(dat3[i],53,55))})
+t4<-sapply(1:length(dat3),function(i){as.numeric(substr(dat3[i],56,58))})
+t5<-sapply(1:length(dat3),function(i){as.numeric(substr(dat3[i],59,61))})
+t6<-sapply(1:length(dat3),function(i){as.numeric(substr(dat3[i],62,64))})
+t7<-sapply(1:length(dat3),function(i){as.numeric(substr(dat3[i],65,67))})
+t8<-sapply(1:length(dat3),function(i){as.numeric(substr(dat3[i],68,70))})
+t9<-sapply(1:length(dat3),function(i){as.numeric(substr(dat3[i],71,73))})
+t10<-sapply(1:length(dat3),function(i){as.numeric(substr(dat3[i],74,76))})
+detect<-vector(length=length(t1))
+for(i in 1:length(t1))  detect[i]<-sum(t1[i],t2[i],t3[i],t4[i],t5[i],t6[i],t7[i],t8[i],t9[i],t10[i],na.rm=T)
+eorl<-sapply(1:length(dat3),function(i){substr(dat3[i],21,21)})
+
+
+# Weather variables:
+
+cloud<-sapply(1:length(dat3),function(i){substr(dat3[i],22,22)})
+rain<-sapply(1:length(dat3),function(i){substr(dat3[i],23,23)})
+wind<-sapply(1:length(dat3),function(i){substr(dat3[i],24,24)})
+vis<-sapply(1:length(dat3),function(i){substr(dat3[i],25,25)})
+
+
+# Getting the start and finish times for the two halves:
+
+fhst.hr<-sapply(1:length(dat3),function(i){as.numeric(substr(dat3[i],26,27))})
+fhst.mn<-sapply(1:length(dat3),function(i){as.numeric(substr(dat3[i],28,29))})
+fhft.hr<-sapply(1:length(dat3),function(i){as.numeric(substr(dat3[i],30,31))})
+fhft.mn<-sapply(1:length(dat3),function(i){as.numeric(substr(dat3[i],32,33))})
+
+shst.hr<-sapply(1:length(dat3),function(i){as.numeric(substr(dat3[i],34,35))})
+shst.mn<-sapply(1:length(dat3),function(i){as.numeric(substr(dat3[i],36,37))})
+shft.hr<-sapply(1:length(dat3),function(i){as.numeric(substr(dat3[i],38,39))})
+shft.mn<-sapply(1:length(dat3),function(i){as.numeric(substr(dat3[i],40,41))})
+
+
+# Caluclating how long the survey took for each half, in mins: 
+ 
+fh.hr<-sapply(1:length(dat3),function(i){ifelse(fhft.hr[i]<fhst.hr[i],fhft.hr[i]+12-fhst.hr[i],fhft.hr[i]-fhst.hr[i])})
+fh.hr.mn<-60*fh.hr
+fh.mn<-sapply(1:length(dat3),function(i){fhft.mn[i]-fhst.mn[i]})
+fh.tt<-fh.hr.mn+fh.mn
+
+sh.hr<-sapply(1:length(dat3),function(i){ifelse(shft.hr[i]<shst.hr[i],shft.hr[i]+12-shst.hr[i],shft.hr[i]-shst.hr[i])})
+sh.hr.mn<-60*sh.hr
+sh.mn<-sapply(1:length(dat3),function(i){shft.mn[i]-shst.mn[i]})
+sh.tt<-sh.hr.mn+sh.mn
+
+bh.tt<-fh.tt+sh.tt
+
+year<-rep(yr,length(dat3))
+site.tran<-tran.sec<-detect.sec<-rep(0,length(dat3))
+
+dataset1<-as.data.frame(cbind(site, observer, year, species, distance, detect, 
+t1, t2,t3,t4,t5,t6,t7,t8,t9,t10,eorl,cloud,rain,wind,vis,fh.tt,sh.tt,bh.tt,detect.sec,tran.sec,site.tran))
+
+
+###############################################################
+# PRODUCING ONE ROW FOR EACH SQUARE WITH OBSERVATIONS
+
+sub1<-subset(dataset1,distance=="1",select=c("site","year","eorl","distance","detect"))
+sub2<-subset(dataset1,distance=="2",select=c("site","year","eorl","distance","detect"))
+sub1$siteeorl<-paste(sub1$site,sub1$eorl,sep="")
+sub2$siteeorl<-paste(sub2$site,sub2$eorl,sep="")
+
+sub3<-subset(dataset1,select=c("site","year","species","observer","eorl","cloud","rain","wind","vis","bh.tt"))
+
+# Reduce data so just one line for each square-visit.
+take.first<-function(x){x[1]}
+temp4<-aggregate(sub3,list(sub3$site,sub3$eorl),take.first)
+temp4$site<-temp4$Group.1
+temp4$eorl<-temp4$Group.2
+temp4<-temp4[,-c(1:2)]
+temp4$siteeorl<-paste(temp4$site,temp4$eorl,sep="")
+
+temp5<-merge(temp4,sub1,by="siteeorl",all.x=TRUE)
+temp6<-merge(temp5,sub2,by="siteeorl",all.x=TRUE)
+
+temp6$site<-temp6$site.x
+temp6$year<-temp6$year.x
+temp6$eorl<-temp6$eorl.x
+temp6$detect.1<-as.numeric(as.character(temp6$detect.x))
+temp6$detect.2<-as.numeric(as.character(temp6$detect.y))
+
+dataset2<-subset(temp6,select=c("site","eorl","year","species","observer",
+"cloud","rain","wind","vis","bh.tt","detect.1","detect.2"))
+
+# Make non-observations zero, not NA:
+for(i in 1:nrow(dataset2)){
+  if(is.na(dataset2$detect.1[i])) {dataset2$detect.1[i]<-0}
+  if(is.na(dataset2$detect.2[i])) {dataset2$detect.2[i]<-0}
+}
+dataset3<-dataset2
+
+###################################
+# READING IN THE HABITAT DATA
+# One line for each 200m section of transect.  Several habitats are able to be entered for each section. 
+
+habitat.filename<-paste(folder.name,"/ehab",substr(yr,3,4),sep="")
+
+hab1<-scan(habitat.filename,what="character",sep="\n",quiet=T)
+
+
+# CREATING NEW VARIABLES
+# For visit type 'D' denotes the habitat on the first visit, and '' the habitat on the second visit (if there are any changes).
+# There may also be a third visit type for some squares.
+
+vis.type<-sapply(1:length(hab1),function(i){substr(hab1[i],21,21)})
+
+
+# For now keep only 'D's.
+
+hab2<-hab1[vis.type=="D"]
+
+
+# Creating new variables:
+
+site<-sapply(1:length(hab2),function(i){substr(hab2[i],9,14)})
+tran.sect<-sapply(1:length(hab2),function(i){as.numeric(as.character(substr(hab2[i],22,23)))})
+habs1<-sapply(1:length(hab2),function(i){substr(hab2[i],24,24)})
+habs2<-sapply(1:length(hab2),function(i){substr(hab2[i],24,25)})
+year<-rep(yr,length(site))
+site.tran<-sapply(1:length(hab2),function(i){paste(site[i],tran.sect[i],sep="")})
+effort<-no.trans<-rep(0,length(site))
+
+habitat<-as.data.frame(cbind(year,site,tran.sect,habs1,habs2,site.tran,no.trans,effort))
+habitat$no.trans<-as.numeric(as.character(habitat$no.trans))
+habitat$effort<-as.numeric(as.character(habitat$effort))
+
+# Calculating the no of transects for which habitat is recorded for each site
+# Note: this can take some time!
+
+sites<-table(habitat$site)
+
+for(i in 1:length(sites)){
+  st<-names(sites)[i]
+  sub<-habitat$site==st
+  locs<-grep(TRUE,sub)
+  n<-length(locs)
+  for(j in 1:n){
+    k<-locs[j]
+    habitat$no.trans[k]<-n
+    habitat$effort[k]<-habitat$no.trans[k]*0.2*0.2
+  }
+}
+
+habA<-habB<-habC<-habD<-habE<-habF<-habG<-habH<-habI<-habJ<-habnull<-rep(0,nrow(habitat))
+all.vec<-list(habA,habB,habC,habD,habE,habF,habG,habH,habI,habJ,habnull)
+habs<-c("A","B","C","D","E","F","G","H","I","J"," ")
+k<-vector()
+
+for(i in 1:nrow(habitat)){
+m<-k[i]<-grep(habitat$habs1[i], habs)
+all.vec[[m]][i]<-1
+}
+
+habitat<-cbind(habitat,all.vec[[1]],all.vec[[2]],all.vec[[3]],all.vec[[4]],all.vec[[5]],all.vec[[6]],all.vec[[7]],all.vec[[8]],all.vec[[9]],all.vec[[10]],all.vec[[11]])
+colnames(habitat)[9:19]<-c("habA","habB","habC","habD","habE","habF","habG","habH","habI","habJ","habnull")
+
+habitat2<-subset(habitat,select=c("site","no.trans","effort","habA","habB","habC","habD","habE","habF","habG","habH","habI","habJ","habnull"))
+habitat3<-aggregate(habitat2[,c(4:14)], by=list(habitat2$site),sum)
+habitat4<-aggregate(habitat2[,c(2:3)], by=list(habitat2$site),mean)
+
+habitat5<-merge(habitat4,habitat3,by="Group.1",x.all=TRUE)
+colnames(habitat5)[1]<-"site"
+
+
+
+#########################
+# Get the no of observations of the bird in each habitat in each square:
+
+dat1<-subset(dataset1,select=c("site","eorl","tran.sec","detect.sec","year"))
+dat1$sitetran<-paste(dat1$site,dat1$tran.sec,sep="")
+
+for(p in 1:nrow(dataset1)){
+  obs<-grep(TRUE,!is.na(dataset1[p,7:16]))
+  if(length(obs)>0){
+    for(q in 1:length(obs)){
+    }
+  }
+}
+
+
+
+hab1<-subset(habitat,select=c("site","tran.sect","habs1","year"))
+hab1$sitetran<-paste(hab1$site,hab1$tran.sect,sep="")
+
+
+
+
+
+
+
+
+
+
+
+# Calculate the 'main' (most frequent) habitat for each square.
+# If there are more than one, then randomly pick one.
+
+sum.hab<-main<-vector()
+for(i in 1:nrow(habitat5)){
+  sum.hab[i]<-sum(habitat5[i,c(4:14)])
+  if(sum.hab[i]>0){
+    m<-grep(max(habitat5[i,c(4:14)]),habitat5[i,c(4:14)])
+    if(length(m)>1) { m<-m[round(runif(1,0.5,length(m)+0.5),0)] }
+    main[i]<-habs[m]
+  }
+}
+
+habitat6<-cbind(habitat5,sum.hab,main)
+habitat7<-subset(habitat6,habJ!=1)
+
+# Need data for early and late visits:
+eorl<-c(rep("E",nrow(habitat7)),rep("L",nrow(habitat7)))
+habitat8<-rbind(habitat7,habitat7)
+habitat8<-cbind(habitat8,eorl)
+habitat8$siteeorl<-paste(habitat8$site,habitat8$eorl,sep="")
+
+# If zero obs, get visit-specific info, e.g. weather 
+# from squares with no obs:
+
+if(zero.obs){
+  weath<-get.zero.obs.weather(yr)
+  weath$siteeorl<-paste(weath$site,weath$eorl,sep="")
+  habitat9<-merge(weath,habitat8,by="siteeorl",all=T)
+  habitat9$site.x<-as.character(habitat9$site.x)
+  habitat9$site.y<-as.character(habitat9$site.y)
+  habitat9$site<-ifelse(is.na(habitat9$site.x), habitat9$site.y, habitat9$site.x)
+  habitat9$observer<-habitat9$observer.x
+  habitat9$eorl.x<-as.character(habitat9$eorl.x)
+  habitat9$eorl.y<-as.character(habitat9$eorl.y)
+  habitat9$eorl<-ifelse(is.na(habitat9$eorl.x), habitat9$eorl.y, habitat9$eorl.x)
+} else {
+  habitat9<-habitat8
+}
+
+
+###################################################
+# JOIN THE OBSERVATION AND HABITAT DATA SETS
+
+dataset3$siteeorl<-paste(dataset3$site,dataset3$eorl,sep="")
+
+dataset4<-merge(habitat9,dataset3,by="siteeorl",all.x=TRUE)
+dataset4$site<-ifelse(is.na(dataset4$site.x),dataset4$site.y,dataset4$site.x)
+dataset4$eorl<-ifelse(is.na(dataset4$eorl.x),dataset4$eorl.y,dataset4$eorl.x)
+
+dataset4$cloud<-dataset4$cloud.x
+dataset4$rain<-dataset4$rain.x
+dataset4$wind<-dataset4$wind.x
+dataset4$vis<-dataset4$vis.x
+
+dataset4$bh.tt<-dataset4$bh.tt.x
+dataset4$year<-yr
+
+# Deleting sites which have no observations, unless zero.obs==T
+
+if(zero.obs){
+  dataset5<-dataset4
+} else {
+  sum.det<-vector()
+  for(i in 1:nrow(dataset4)){
+    sum.det[i]<-sum(dataset4$detect.1[i],dataset4$detect.2[i])
+  }
+  dataset5<-subset(dataset4,sum.det>0)
+}
+
+# Rename some columns:
+dataset5$cloud<-dataset5$cloud.x
+dataset5$rain<-dataset5$rain.x
+dataset5$wind<-dataset5$wind.x
+dataset5$vis<-dataset5$vis.x
+
+# Keep only the useful columns, and dispose of duplicates:
+dataset6<-subset(dataset5,select=c("site","eorl","no.trans","effort","species",
+"observer","cloud","rain","wind","vis","bh.tt","detect.1","detect.2","main",
+"habA","habB","habC","habD","habE","habF","habG","habH","habI","habJ","habnull","year"))
+
+
+# Turn NAs into zeros:
+for(i in 1:nrow(dataset6)){
+  if(is.na(dataset6$detect.1[i])){dataset6$detect.1[i]<-0}
+  if(is.na(dataset6$detect.2[i])){dataset6$detect.2[i]<-0}
+}
+
+if(by.dist){
+  dist.band<-c(rep(1,nrow(dataset6)),rep(2,nrow(dataset6)))
+  distbegin<-c(rep(0,nrow(dataset6)),rep(25,nrow(dataset6)))
+  distend<-c(rep(25,nrow(dataset6)),rep(100,nrow(dataset6)))
+  distance<-c(rep(12.5,nrow(dataset6)),rep(62.5,nrow(dataset6)))
+  detected<-c(dataset6$detect.1,dataset6$detect.2)
+  dataset7<-rbind(dataset6,dataset6)
+  dataset7<-cbind(dataset7,dist.band,distbegin,distend,distance,detected)
+  if(zero.obs){
+    dataset8<-dataset7
+  } else {
+    dataset8<-subset(dataset7,detected>0)
+  }
+  dataset8<-dataset8[,-c(12:13)]
+} else {
+  dataset8<-dataset6
+}
+
+# write.table(dataset6,"C:/Documents and Settings/alisonj/BBS General/Copy of Distance_in_R/SF data.txt",sep=",")
+dataset8
+#####################################################################
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

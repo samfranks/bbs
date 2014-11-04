@@ -1,0 +1,71 @@
+###############################################################
+######    GETTING BBS DATA FOR EACH YEAR INTO THE SAME   ######
+#############       DATA FRAME FOR ANALYSIS      ##############
+###############################################################
+
+#  Written by Ali Johnston July 2009
+
+format.data.all.yr.square<-function(spec.code,min.year,max.year,zero.obs.squares=F,squares=T){
+
+# setwd("Z:/bbs")
+# Don't forget to set the working directory.
+
+# This function calls the function get.data.per.yr.square for each year that data is wanted.
+# spec.code is the two letter species code.  e.g. "SF" or "D."
+# min.year is the earliest year for which data is wanted
+# max.year is the latest year for which data is wanted
+# Data is retrieved for each year between min.year and max.year, in addition to both of those years.
+# zero.obs.squares is whether the dataframe should include those squares in which no 
+# observations of the species were made.  This takes a long time for R to calculate
+# and therefore the default is FALSE.
+
+no.yrs<-max.year-min.year+1
+
+if(squares){
+  new.data<-get.data.per.yr.square(species=spec.code,yr=min.year,zero.obs=zero.obs.squares)
+
+  if(no.yrs>1) {
+    for(j in 1:(no.yrs-1)){
+      j.year<-min.year+j
+      yr.dat<-get.data.per.yr.square(species=spec.code,yr=j.year,zero.obs=zero.obs.squares)
+      new.data<-rbind(new.data,yr.dat)
+    }	# close j
+  }	# close if statement (no else)
+
+} else {
+  new.data<-get.data.per.yr(species=spec.code,yr=min.year,zero.obs=zero.obs.squares)
+
+  if(no.yrs>1) {
+    for(j in 1:(no.yrs-1)){
+      j.year<-min.year+j
+      yr.dat<-get.data.per.yr(species=spec.code,yr=j.year,zero.obs=zero.obs.squares)
+      new.data<-rbind(new.data,yr.dat)
+    }	# close j
+  }	# close if statement (no else)
+
+}
+new.data
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
